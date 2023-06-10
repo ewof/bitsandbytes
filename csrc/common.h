@@ -1,4 +1,4 @@
-#include <BinSearch.h>
+#include <../include/BinSearch.h>
 
 #ifndef common
 #define common
