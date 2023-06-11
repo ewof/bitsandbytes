@@ -12,34 +12,39 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include <cuda_runtime_api.h>
-#include <cuda_fp16.h>
-#include <cublas_v2.h>
-#include <cublasLt.h>
-#include <cusparse.h>
+// #include <hip_runtime_api.h>
+// #include <hip_fp16.h>
+// #include <cublas_v2.h>
+// #include <cublasLt.h>
+// #include <hipsparse.h>
+#include <hip/hip_runtime_api.h>
+#include <hip/hip_fp16.h>
+#include <hipblas.h>
+// #include <hipblasLt.h>
+#include <hipsparse.h>
 #include <vector>
 #include <functional>
 
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
-
+typedef struct cublasLtContext* cublasLtHandle_t;
 
 #define CUDA_CHECK_RETURN(value) {                      \
-  cudaError_t _m_cudaStat = value;                    \
-  if (_m_cudaStat != cudaSuccess) {                   \
+  hipError_t _m_hipStat = value;                    \
+  if (_m_hipStat != hipSuccess) {                   \
     fprintf(stderr, "Error %s at line %d in file %s\n",         \
-        cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);   \
+        hipGetErrorString(_m_hipStat), __LINE__, __FILE__);   \
     exit(1);                              \
   } }
 
 #define THREADS_PER_BLOCKS (512)
 
-#define CHECK_CUSPARSE(value) {                      \
-  cusparseStatus_t _m_cudaStat = value;                    \
-  if (_m_cudaStat != CUSPARSE_STATUS_SUCCESS) {                   \
+#define CHECK_hipsparse(value) {                      \
+  hipsparseStatus_t _m_hipStat = value;                    \
+  if (_m_hipStat != hipsparse_STATUS_SUCCESS) {                   \
     fprintf(stderr, "Error %s at line %d in file %s\n",         \
-        cusparseGetErrorString(_m_cudaStat), __LINE__, __FILE__);   \
+        hipsparseGetErrorString(_m_hipStat), __LINE__, __FILE__);   \
     exit(1);                              \
   } }
 
@@ -47,10 +52,10 @@
 #define THREADS_PER_BLOCKS (512)
 
 
-inline void checkCudaStatus(cudaError_t status) {
-    if (status != cudaSuccess) {
-        printf("cuda API failed with status %d: %s\n", status, cudaGetErrorString(status));
-        throw std::logic_error("cuda API failed");
+inline void checkCudaStatus(hipError_t status) {
+    if (status != hipSuccess) {
+        printf("hip API failed with status %d: %s\n", status, hipGetErrorString(status));
+        throw std::logic_error("hip API failed");
     }
 }
 
@@ -129,15 +134,15 @@ class ContextLt
 
 };
 
-class ContextCusparse
+class Contexthipsparse
 {
     public:
-				cusparseHandle_t m_handle;
+				hipsparseHandle_t m_handle;
 
-				ContextCusparse()
+				Contexthipsparse()
 				{
-					cusparseHandle_t handle;
-					cusparseCreate(&handle);
+					hipsparseHandle_t handle;
+					hipsparseCreate(&handle);
 					m_handle = handle;
 				}
 
@@ -190,7 +195,7 @@ void doubleRowColQuant(half * A, float *rowStats, float *colStats, char *out_col
 
 template <int FORMAT, int TRANSPOSE> void transformRowToFormat(char * A, char *out, int rows, int cols);
 
-void spmm_coo(cusparseHandle_t handle, int *A_rowidx, int *A_colidx, half *A_vals, int A_nnz, int A_rows, int A_cols, int B_cols, int ldb, half *B, int ldc, half* C, bool transposed_B);
+void spmm_coo(hipsparseHandle_t handle, int *A_rowidx, int *A_colidx, half *A_vals, int A_nnz, int A_rows, int A_cols, int B_cols, int ldb, half *B, int ldc, half* C, bool transposed_B);
 
 template <typename T, int BITS> void spmm_coo_very_sparse_naive(int *max_count, int *max_idx, int *offset_rowidx, int *rowidx, int *colidx, half *values, T *B, half *out, float *dequant_stats, int nnz_rows, int nnz, int rowsA, int rowsB, int colsB);
 
